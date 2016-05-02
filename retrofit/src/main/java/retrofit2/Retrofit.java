@@ -15,6 +15,12 @@
  */
 package retrofit2;
 
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.http.*;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -25,14 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.RequestBody;
-import okhttp3.ResponseBody;
-import retrofit2.http.GET;
-import retrofit2.http.HTTP;
-import retrofit2.http.Header;
-import retrofit2.http.Url;
 
 import static java.util.Collections.unmodifiableList;
 import static retrofit2.Utils.checkNotNull;
@@ -58,12 +56,14 @@ import static retrofit2.Utils.checkNotNull;
  */
 public final class Retrofit {
   private final Map<Method, ServiceMethod> serviceMethodCache = new LinkedHashMap<>();
+  private final Map<String, FieldGenerator> fieldGeneratorMap = new LinkedHashMap<>();
 
   private final okhttp3.Call.Factory callFactory;
   private final HttpUrl baseUrl;
   private final List<Converter.Factory> converterFactories;
   private final List<CallAdapter.Factory> adapterFactories;
   private final Executor callbackExecutor;
+
   private final boolean validateEagerly;
 
   Retrofit(okhttp3.Call.Factory callFactory, HttpUrl baseUrl,
@@ -143,11 +143,14 @@ public final class Retrofit {
               return platform.invokeDefaultMethod(method, service, proxy, args);
             }
             ServiceMethod serviceMethod = loadServiceMethod(method);
+            args = serviceMethod.rebuildArgs(method, args);
             OkHttpCall okHttpCall = new OkHttpCall<>(serviceMethod, args);
             return serviceMethod.callAdapter.adapt(okHttpCall);
           }
         });
   }
+
+
 
   private void eagerlyValidateMethods(Class<?> service) {
     Platform platform = Platform.get();
